@@ -173,7 +173,7 @@ def get_intervals_icu_events(oldest, newest, userid, api_key):
     return response
 
 
-def upload_to_intervals_icu(date, name, sport, userid, api_key, contents=None, moving_time=None, description=None):
+def upload_to_intervals_icu(date, name, sport, userid, api_key, contents=None, moving_time=None, description=None, tags=None):
     """Upload workout to intervals.icu and return response."""
     url = f'https://intervals.icu/api/v1/athlete/{userid}/events'
 
@@ -186,17 +186,20 @@ def upload_to_intervals_icu(date, name, sport, userid, api_key, contents=None, m
         category = 'NOTE'
 
     if sport == 'VirtualRide':
-        payload = json.dumps({
+        payload_dict = {
             "color": color,
             "category": category,
             "start_date_local": date,
             "type": sport,
             "filename": name,
             "file_contents": contents
-        })
+        }
+        if tags:
+            payload_dict["tags"] = tags
+        payload = json.dumps(payload_dict)
 
     else:
-        payload = json.dumps({
+        payload_dict = {
             "color": color,
             "start_date_local": date,
             "description": description,
@@ -204,7 +207,10 @@ def upload_to_intervals_icu(date, name, sport, userid, api_key, contents=None, m
             "name": name,
             "type": sport,
             "moving_time": moving_time
-        })
+        }
+        if tags:
+            payload_dict["tags"] = tags
+        payload = json.dumps(payload_dict)
 
     headers = get_intervals_icu_headers(api_key)
     response = call_api(url, "POST", headers, payload)
@@ -249,6 +255,12 @@ def main():
             WORKOUT_PREFIX = config.get('DEFAULT', 'WORKOUT_PREFIX', fallback='').strip()
             if WORKOUT_PREFIX and not WORKOUT_PREFIX.endswith(' '):
                 WORKOUT_PREFIX += ' '
+            WORKOUT_TAGS = config.get('DEFAULT', 'WORKOUT_TAGS', fallback='').strip()
+            # Convert comma-separated tags to list
+            if WORKOUT_TAGS:
+                WORKOUT_TAGS = [tag.strip() for tag in WORKOUT_TAGS.split(',') if tag.strip()]
+            else:
+                WORKOUT_TAGS = []
             SYSTM_USERNAME = config.get('WAHOO', 'SYSTM_USERNAME')
             SYSTM_PASSWORD = config.get('WAHOO', 'SYSTM_PASSWORD')
             START_DATE = config.get('WAHOO', 'START_DATE')
@@ -346,7 +358,7 @@ def main():
                                 if event['start_date_local'] == workout_date_datetime and event['name'] == workout_name:
                                     print(f"Removing {workout_date_datetime}: {event['name']} (id {event['id']}).")
                                     delete_intervals_icu_event(event['id'], INTERVALS_ICU_ID, INTERVALS_ICU_APIKEY)
-                            response = upload_to_intervals_icu(workout_date_string, workout_name, sport, INTERVALS_ICU_ID, INTERVALS_ICU_APIKEY, description=description, moving_time=moving_time)
+                            response = upload_to_intervals_icu(workout_date_string, workout_name, sport, INTERVALS_ICU_ID, INTERVALS_ICU_APIKEY, description=description, moving_time=moving_time, tags=WORKOUT_TAGS)
                             if response.status_code == 200:
                                 print(f'Uploaded {workout_date_datetime}: {workout_name} ({sport})')
                             continue
@@ -453,7 +465,7 @@ def main():
                         if event['start_date_local'] == workout_date_datetime and (event['name'] == workout_name or event['name'] == workout_name_remove_invalid_chars):
                             print(f"Removing {workout_date_datetime}: {event['name']} (id {event['id']}).")
                             delete_intervals_icu_event(event['id'], INTERVALS_ICU_ID, INTERVALS_ICU_APIKEY)
-                    response = upload_to_intervals_icu(workout_date_string, intervals_filename, sport, INTERVALS_ICU_ID, INTERVALS_ICU_APIKEY, contents=file_contents)
+                    response = upload_to_intervals_icu(workout_date_string, intervals_filename, sport, INTERVALS_ICU_ID, INTERVALS_ICU_APIKEY, contents=file_contents, tags=WORKOUT_TAGS)
                     if response.status_code == 200:
                         print(f'Uploaded {workout_date_datetime}: {workout_name} ({sport})')
 
