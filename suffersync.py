@@ -246,6 +246,9 @@ def main():
             UPLOAD_RUN_WORKOUTS = config.getint('DEFAULT', 'UPLOAD_RUN_WORKOUTS', fallback=0)
             UPLOAD_SWIM_WORKOUTS = config.getint('DEFAULT', 'UPLOAD_SWIM_WORKOUTS', fallback=0)
             UPLOAD_DESCRIPTION = config.getint('DEFAULT', 'UPLOAD_DESCRIPTION', fallback=0)
+            WORKOUT_PREFIX = config.get('DEFAULT', 'WORKOUT_PREFIX', fallback='').strip()
+            if WORKOUT_PREFIX and not WORKOUT_PREFIX.endswith(' '):
+                WORKOUT_PREFIX += ' '
             SYSTM_USERNAME = config.get('WAHOO', 'SYSTM_USERNAME')
             SYSTM_PASSWORD = config.get('WAHOO', 'SYSTM_PASSWORD')
             START_DATE = config.get('WAHOO', 'START_DATE')
@@ -304,8 +307,12 @@ def main():
             workout_date_datetime = datetime.strptime(planned_date, "%Y-%m-%dT%H:%M:%S.%fZ").date()
             workout_date_string = workout_date_datetime.strftime('%Y-%m-%dT%H:%M:%S')
 
-            # Get workout name and remove invalid characters to avoid filename issues.
+            # Get workout name and apply prefix if configured
             workout_name = item['prospects'][0]['name']
+            if WORKOUT_PREFIX:
+                workout_name = WORKOUT_PREFIX + workout_name
+
+            # Remove invalid characters to avoid filename issues
             workout_name_remove_invalid_chars = re.sub("[:?]", "", workout_name)
             workout_name_underscores = re.sub("[ ,./]", "_", workout_name_remove_invalid_chars)
             filename = f'{workout_date_datetime}_{workout_name_underscores}'
